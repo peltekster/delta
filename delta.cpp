@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cstring>
+#include <cmath>
 #include "common.h"
 using namespace std;
 
@@ -9,8 +10,47 @@ inline int32_t getRandUInt() {
   return rand();
 }
 
+const double TIMESTAMP_DISTRIBUTION[33] = {
+  1, 
+  2.5, 5, 16.5, 22.3, 
+  15.2, 8.7, 2.5, 1.2, 
+  0.33, 0.28, 0.17, 0.12, 
+  0.11, 0.1, 0.09, 0.07, 
+  0.05, 0.04, 0.03, 0.02, 
+  0.01, 0.008, 0.006, 0.005,
+  0.004, 0.002, 0.001, 0.0005,
+  0.0002, 0.00007, 0.00001
+};
+
+void generateDataByDistribution(int32_t data[], int size, const double DISTRIBUTION[], int n)
+{
+  int32_t last = 135;
+  double sump = 0;
+  for (int i = 0; i < n; i++) sump += DISTRIBUTION[i];
+  unsigned max_rand = 1;
+  for (auto i = 0; i < size; ++i) {
+    if (i % 32 == 0) {
+      double p = drand48() * sump;
+      int j = 0;
+      double s = 0;
+      while (s + DISTRIBUTION[j] < p) {
+        s += DISTRIBUTION[j];
+        j++;
+      }
+      double mini = s;
+      double maxi = s + DISTRIBUTION[j];
+      double nbits = j + (maxi - p) / (maxi - mini);
+      double z = pow(2.0, nbits) / 2.0;
+      if (z < 1) z = 1;
+      max_rand = z;
+    }
+    last += rand() % max_rand;
+    data[i] = last;
+  }
+}
+
 void testDelta() {
-  const uint32_t size = (1 << 22) + 1;
+  const uint32_t size = (1 << 27) + 1;
   const uint32_t allocBytes = uint32_t(1.05 * size * sizeof(int32_t));
 
   int32_t* input = (int32_t*) malloc(allocBytes);
@@ -18,9 +58,7 @@ void testDelta() {
   uint8_t* enc = (uint8_t*) malloc(allocBytes);
   int32_t* dec = (int32_t*) malloc(allocBytes);
 
-  for (auto i = 0; i < size; ++i) {
-    input[i] = rand();
-  }
+  generateDataByDistribution(input, size, TIMESTAMP_DISTRIBUTION, COUNT_OF(TIMESTAMP_DISTRIBUTION));
 
   memcpy(check, input, allocBytes);
 
@@ -123,18 +161,10 @@ void testZigZagInt() {
 }
 
 int main() {
-  //srand(time(0));
-
-  while (1) {
-    unsigned long seed = clock();
-    srand(seed);
-    printf("seed = %lu\n", seed);
-
-    testVarInt();
-    testZigZagInt();
-    testBitpack();
-    testDelta();
-  }
+  testVarInt();
+  testZigZagInt();
+  testBitpack();
+  testDelta();
 
   return 0;
 }

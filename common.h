@@ -10,6 +10,8 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
+#define COUNT_OF(arr) (sizeof(arr) / sizeof(arr[0]))
+
 #define DECL_ALIGN(type, name, bytes) type name __attribute__((aligned(bytes)))
 
 int32_t writeVarInt(uint32_t value, uint8_t* dest);
