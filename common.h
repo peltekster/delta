@@ -2,6 +2,7 @@
 #define COMMON_H_
 
 #include <cstdint>
+#include <cassert>
 
 #define BLOCK_SIZE 128
 #define MINIBLOCK_SIZE 32
@@ -10,14 +11,6 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 #define DECL_ALIGN(type, name, bytes) type name __attribute__((aligned(bytes)))
-
-//#include <cassert>
-void dummy();
-#ifdef __DEBUG__
-#define assert(a) if (!(a)) dummy()
-#else
-#define assert(a)
-#endif
 
 int32_t writeVarInt(uint32_t value, uint8_t* dest);
 int32_t readVarInt(const uint8_t* __restrict__ src, uint32_t* __restrict__ dest);

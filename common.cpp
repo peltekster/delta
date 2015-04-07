@@ -1,5 +1,6 @@
 #include "common.h"
 #include <climits>
+#include <cstdio>
 
 int32_t writeVarInt(uint32_t value, uint8_t* dest) {
   uint8_t* initial = dest;
@@ -41,7 +42,7 @@ inline uint32_t popcnt(uint32_t value) {
   return cnt;
 }
 
-
+#ifdef __INT_BITPACK__
 
 int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
   uint8_t* initDest = dest;
@@ -98,29 +99,98 @@ int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __r
   return 1 + count * 4;
 }
 
+#else
+
+int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+  assert(count % 32U == 0);
+
+  uint8_t* initDest = dest;
+  uint32_t max = 0;
+  for (auto i = 0; i < count; ++i) {
+    max = MAX(max, values[i]);
+  }
+
+  const uint32_t bits = popcnt(max);
+  assert(bits <= 32);
+  const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
+  *(dest++) = (uint8_t) bits;
+
+  uint64_t buffer = 0;
+  uint32_t bufSize = 0;
+  for (auto i = 0; i < count; ++i) {
+    buffer |= (((uint64_t) values[i] & mask) << bufSize);
+    bufSize += bits;
+
+    while (bufSize >= 8) {
+      *(dest++) = (uint8_t) (buffer & 0xFF);
+      buffer >>= 8U;
+      bufSize -= 8U;
+    }
+  }
+  assert(bufSize == 0);
+  return dest - initDest;
+}
+
+int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
+
+  const uint32_t bits = src[0];
+
+  if (bits > 32) {
+    printf("bits %u\n", bits);
+  }
+  assert(bits <= 32);
+  const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
+
+  uint64_t buffer = 0;
+  uint32_t bufSize = 0;
+  count = 1U + bits * count / 8U;
+  for (auto i = 1; i < count; ++i) {
+    buffer |= (((uint64_t) src[i]) << bufSize);
+    bufSize += 8U;
+
+    while (bufSize >= bits) {
+      *(values++) = (uint32_t) (buffer & mask);
+      buffer >>= bits;
+      bufSize -= bits;
+    }
+  }
+  assert(bufSize == 0);
+  return count;
+}
+
+#endif
+
 int encodeDelta(int32_t* __restrict__ data, uint32_t count, uint8_t* __restrict__ dest) {
   uint8_t* initDest = dest;
   dest += writeZigZagInt(data[0], dest);
-  int32_t last = data[0], curDelta;
+  int32_t last = data[0];
 
   assert((count-1) % BLOCK_SIZE == 0);
   assert(BLOCK_SIZE % MINIBLOCK_SIZE == 0);
 
   for (auto i = 1; i < count;) {
-    const auto upperBound = i + MINIBLOCK_SIZE;
-    int32_t minDelta = INT_MAX;
+    int32_t minDelta = INT_MAX, curDelta;
+    const auto upperBound = i + BLOCK_SIZE;
+
     for (auto j = i; j < upperBound; ++j) {
       curDelta = data[j] - last;
       last = data[j];
       data[j] = curDelta;
       minDelta = MIN(minDelta, curDelta);
     }
+
     for (auto j = i; j < upperBound; ++j) {
       data[j] -= minDelta;
     }
+
     dest += writeZigZagInt(minDelta, dest);
-    dest += bitPack((uint32_t*) &data[i], MINIBLOCK_SIZE, dest);
+    for (auto j = i; j < upperBound; j += MINIBLOCK_SIZE) {
+      dest += bitPack((uint32_t*) &data[j], MINIBLOCK_SIZE, dest);
+    }
+
     i = upperBound;
+    assert(i <= count);
   }
 
   return dest - initDest;
@@ -129,81 +199,23 @@ int encodeDelta(int32_t* __restrict__ data, uint32_t count, uint8_t* __restrict_
 int decodeDelta(const uint8_t* __restrict__ src, uint32_t count, int32_t* __restrict__ values) {
   const uint8_t* initSrc = src;
   int32_t* initValues = values;
-  src += readZigZagInt(src, values);
-  int32_t last = *values;
-  ++values;
+  int32_t last;
+  src += readZigZagInt(src, &last);
+  *(values++) = last;
 
   while (src - initSrc < count) {
     int32_t minDelta;
     src += readZigZagInt(src, &minDelta);
-    src += bitUnpack(src, MINIBLOCK_SIZE, (uint32_t*) values);
-    for (auto i = 0; i < MINIBLOCK_SIZE; ++i) {
-      last += minDelta + values[i];
-      values[i] = last;
+
+    for (auto br = 0; br < BLOCK_SIZE; br += MINIBLOCK_SIZE) {
+      src += bitUnpack(src, MINIBLOCK_SIZE, (uint32_t*) values);
+      for (auto i = 0; i < MINIBLOCK_SIZE; ++i) {
+        last += minDelta + values[i];
+        values[i] = last;
+      }
+      values += MINIBLOCK_SIZE;
     }
-    values += MINIBLOCK_SIZE;
   }
   assert(src - initSrc == count);
   return values - initValues;
 }
-
-void dummy() {
-  int a = 5;
-}
-
-/*
-
-// byte versions
-int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
-  uint8_t* initDest = dest;
-  uint32_t max = 0;
-  for (auto i = 0; i < count; ++i) {
-    max = MAX(max, values[i]);
-  }
-
-  auto bits = popcnt(max);
-  auto mask = (1 << bits) - 1;
-  *(dest++) = (uint8_t) bits;
-
-  uint64_t buffer = 0;
-  uint32_t bufSize = 0;
-  for (auto i = 0; i < count; ++i) {
-    while (bufSize >= 8) {
-      *(dest++) = buffer & 0xFF;
-      buffer >>= 8;
-      bufSize -= 8;
-    }
-    buffer |= ((values[i] & mask) << bufSize);
-    bufSize += bits;
-    assert(bufSize <= 40);
-  }
-  while (bufSize >= 8) {
-    *(dest++) = buffer & 0xFF;
-    buffer >>= 8;
-    bufSize -= 8;
-  }
-  assert(bufSize == 0);
-  return dest - initDest;
-}
-
-int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
-  uint32_t bits = src[0];
-  uint32_t mask = (1 << bits) - 1;
-
-  uint64_t buffer = 0;
-  uint32_t bufSize = 0;
-  count = 1 + bits * count / 8;
-  for (auto i = 1; i < count; ++i) {
-    buffer |= (((uint64_t) src[i]) << bufSize);
-    bufSize += 8;
-
-    while (bufSize >= bits) {
-      *(values++) = (buffer & mask);
-      buffer >>= bits;
-      bufSize -= bits;
-    }
-  }
-  assert(bufSize == 0);
-  return count;
-}
-*/
