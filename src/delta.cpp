@@ -6,7 +6,13 @@ using namespace std;
 
 inline int32_t getRandSInt() {
   //return (rand() << 1) | (rand() & 1);
-  return rand() % 292113 - 142134;
+  return rand() % 103 - 48;
+  //return rand() % 2913 - 1414;
+  //return rand() % 291130 - 141147;
+
+  //static int cur = 0;
+  //cur += rand() % 7;
+  //return cur;
 }
 
 inline int32_t getRandUInt() {
@@ -14,8 +20,9 @@ inline int32_t getRandUInt() {
 }
 
 void testDelta() {
-  uint32_t size = 1025;
-  uint32_t allocBytes = size * sizeof(int32_t);
+  //const uint32_t size = 1025;
+  const uint32_t size = (1 << 28) + 1;
+  const uint32_t allocBytes = size * sizeof(int32_t);
 
   int32_t* bla = (int32_t*) malloc(allocBytes);
   uint8_t* enc = (uint8_t*) malloc(allocBytes);
@@ -31,7 +38,7 @@ void testDelta() {
   int32_t elem = decodeDelta(enc, bytes, dec);
   clock_t end_dec = clock();
 
-  printf("Efficiency: %.2lf bytes/int\n", (double) bytes / size);
+  printf("Efficiency: %.2lf bits/int\n", (double) 8. * bytes / size);
   printf("Encode speed: %.2lf Mint/s\n",
       (size / 1000000.) / (double(lap - start_enc) / CLOCKS_PER_SEC));
   printf("Decode speed: %.2lf Mint/s\n",

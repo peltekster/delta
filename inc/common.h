@@ -19,11 +19,11 @@ void dummy();
 #define assert(a)
 #endif
 
-inline int32_t writeVarInt(uint32_t value, uint8_t* dest);
-inline int32_t readVarInt(const uint8_t* __restrict__ src, uint32_t* __restrict__ dest);
+int32_t writeVarInt(uint32_t value, uint8_t* dest);
+int32_t readVarInt(const uint8_t* __restrict__ src, uint32_t* __restrict__ dest);
 
-inline int32_t writeZigZagInt(int32_t value, uint8_t* dest);
-inline int32_t readZigZagInt(const uint8_t* __restrict__ src, int32_t* __restrict__ dest);
+int32_t writeZigZagInt(int32_t value, uint8_t* dest);
+int32_t readZigZagInt(const uint8_t* __restrict__ src, int32_t* __restrict__ dest);
 
 int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest);
 int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values);
