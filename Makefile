@@ -1,7 +1,15 @@
+
+ifdef RELEASE
+	CXXFLAGS += -O2
+else
+	CXXFLAGS += -g3 -O0
+endif
+
 # CXX = /usr/local/bin/g++-4.9
 CXX = g++
-LD = $(CXX)
-CXXFLAGS = -g3 -O0 -std=c++11
+CC = $(CXX)
+CXXFLAGS += -std=c++11
+LDLIBS += -lm
 
 all: delta
 
