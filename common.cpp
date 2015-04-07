@@ -45,27 +45,31 @@ inline uint32_t popcnt(uint32_t value) {
 #ifdef __INT_BITPACK__
 
 int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+  assert(count % 32 == 0);
+
   uint8_t* initDest = dest;
   uint32_t max = 0;
   for (auto i = 0; i < count; ++i) {
     max = MAX(max, values[i]);
   }
 
-  const auto bits = popcnt(max);
-  const auto mask = (1 << bits) - 1;
+  const uint32_t bits = popcnt(max);
+  assert(bits <= 32);
+  const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
   *(dest++) = (uint8_t) bits;
   uint32_t* destInt = (uint32_t*)dest;
 
   uint64_t buffer = 0;
   uint32_t bufSize = 0;
   for (auto i = 0; i < count; ++i) {
+    buffer |= (((uint64_t) values[i] & mask) << bufSize);
+    bufSize += bits;
+
     while (bufSize >= 32) {
       *(destInt++) = (uint32_t)(buffer & 0xFFFFFFFF);
       buffer >>= 32;
       bufSize -= 32;
     }
-    buffer |= ((values[i] & mask) << bufSize);
-    bufSize += bits;
   }
   dest = (uint8_t*)destInt;
   while (bufSize >= 8) {
@@ -78,8 +82,10 @@ int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __
 }
 
 int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
   const uint32_t bits = src[0];
-  const uint32_t mask = (1 << bits) - 1;
+  assert(bits <= 32);
+  const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
   const uint32_t* srcInt = (uint32_t*)&src[1];
 
   uint64_t buffer = 0;
@@ -90,7 +96,7 @@ int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __r
     bufSize += 32;
 
     while (bufSize >= bits) {
-      *(values++) = (buffer & mask);
+      *(values++) = (uint32_t) (buffer & mask);
       buffer >>= bits;
       bufSize -= bits;
     }
@@ -102,7 +108,7 @@ int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __r
 #else
 
 int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
-  assert(count % 32U == 0);
+  assert(count % 32 == 0);
 
   uint8_t* initDest = dest;
   uint32_t max = 0;
@@ -133,12 +139,7 @@ int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __
 
 int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
-
   const uint32_t bits = src[0];
-
-  if (bits > 32) {
-    printf("bits %u\n", bits);
-  }
   assert(bits <= 32);
   const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
 
