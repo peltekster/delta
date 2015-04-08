@@ -56,8 +56,7 @@ void testDelta() {
   int32_t* input = (int32_t*) malloc(allocBytes);
   int32_t* check = (int32_t*) malloc(allocBytes);
   uint8_t* enc = (uint8_t*) malloc(allocBytes);
-  int32_t* original_dec = (int32_t*) valloc(allocBytes+4096);
-  int32_t* dec = original_dec + 31;
+  int32_t* dec = (int32_t*) malloc(allocBytes);
 
   generateDataByDistribution(input, size, TIMESTAMP_DISTRIBUTION, COUNT_OF(TIMESTAMP_DISTRIBUTION));
 
@@ -88,7 +87,7 @@ void testDelta() {
   free(input);
   free(check);
   free(enc);
-  free(original_dec);
+  free(dec);
 
 /*
   extern int sizeCounters[33];

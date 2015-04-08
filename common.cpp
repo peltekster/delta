@@ -160,22 +160,31 @@ int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t
 int sizeCounters[33];
 
 extern "C"
-  int32_t unpack_internal_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+  int32_t unpack_internal_bmi2_0_8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+extern "C"
+  int32_t unpack_internal_bmi2_9_16(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
 
 int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values)
 {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
-  sizeCounters[bits]++;
+  //sizeCounters[bits]++;
   assert(bits <= 32);
-  if (bits > 8) return bitUnpack_int32(src, count, values);
+  if (bits > 8 /*16*/) return bitUnpack_int32(src, count, values);
 
   const uint8_t* __restrict__ saved = src;
   src++;
-  for (; count > 0; count -= 32) {
-    src += unpack_internal_bmi2(src, 32, values, bits);
-    values += 32;
-  }
+  /* if (bits <= 8) { */
+    for (; count > 0; count -= 32) {
+      src += unpack_internal_bmi2_0_8(src, 32, values, bits);
+      values += 32;
+    }
+  /*} else {
+    for (; count > 0; count -= 32) {
+      src += unpack_internal_bmi2_9_16(src, 32, values, bits);
+      values += 32;
+    }
+  }*/
   return src - saved;
 }
 
