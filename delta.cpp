@@ -56,7 +56,8 @@ void testDelta() {
   int32_t* input = (int32_t*) malloc(allocBytes);
   int32_t* check = (int32_t*) malloc(allocBytes);
   uint8_t* enc = (uint8_t*) malloc(allocBytes);
-  int32_t* dec = (int32_t*) malloc(allocBytes);
+  int32_t* original_dec = (int32_t*) valloc(allocBytes+4096);
+  int32_t* dec = original_dec + 31;
 
   generateDataByDistribution(input, size, TIMESTAMP_DISTRIBUTION, COUNT_OF(TIMESTAMP_DISTRIBUTION));
 
@@ -68,6 +69,10 @@ void testDelta() {
   clock_t lap = clock();
   int32_t elem = decodeDelta(enc, bytes, dec);
   clock_t end_dec = clock();
+
+//  for (int repeat = 0; repeat < 60; repeat++)
+  //    int32_t elem = decodeDelta(enc, bytes, dec);
+
 
   printf("Efficiency: %.2lf bits/int\n", (double) 8. * bytes / size);
   printf("Encode speed: %.2lf Mint/s\n",
@@ -83,7 +88,14 @@ void testDelta() {
   free(input);
   free(check);
   free(enc);
-  free(dec);
+  free(original_dec);
+
+/*
+  extern int sizeCounters[33];
+  printf("Size stats:\n");
+  for (int i = 0; i <= 32; i++)
+    printf("%2d bits: %d iterations\n", i, sizeCounters[i]);
+ */
 
   printf("Delta: OK\n");
 }

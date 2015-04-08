@@ -157,6 +157,7 @@ int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t
   return count;
 }
 
+int sizeCounters[33];
 
 extern "C"
   int32_t unpack_internal_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
@@ -165,11 +166,17 @@ int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t
 {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
+  sizeCounters[bits]++;
   assert(bits <= 32);
   if (bits > 8) return bitUnpack_int32(src, count, values);
 
-
-  return 1 + unpack_internal_bmi2(src + 1, count, values, bits);
+  const uint8_t* __restrict__ saved = src;
+  src++;
+  for (; count > 0; count -= 32) {
+    src += unpack_internal_bmi2(src, 32, values, bits);
+    values += 32;
+  }
+  return src - saved;
 }
 
 
