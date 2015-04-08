@@ -1,8 +1,16 @@
+
+ifdef RELEASE
+	CXXFLAGS += -O2
+else
+	CXXFLAGS += -g3 -O0
+endif
+
 # CXX = /usr/local/bin/g++-4.9
-CXX = g++-4.9
+CXX = g++
 LD = $(CXX)
-CXXFLAGS = -O2 -std=c++11 -DBITPACK=64 -DNDEBUG
+CXXFLAGS += -std=c++11 -DBITPACK=64 -DNDEBUG
 NASM = /usr/local/bin/nasm
+LDLIBS += -lm
 
 all: delta
 
