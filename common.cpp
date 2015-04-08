@@ -1,6 +1,7 @@
 #include "common.h"
 #include <climits>
 #include <cstdio>
+#include <immintrin.h>
 
 int32_t writeVarInt(uint32_t value, uint8_t* dest) {
   uint8_t* initial = dest;
@@ -42,9 +43,7 @@ inline uint32_t popcnt(uint32_t value) {
   return cnt;
 }
 
-#ifdef __INT_BITPACK__
-
-int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
   assert(count % 32 == 0);
 
   uint8_t* initDest = dest;
@@ -81,7 +80,7 @@ int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __
   return dest - initDest;
 }
 
-int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+int32_t bitUnpack_int32(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
   assert(bits <= 32);
@@ -105,9 +104,7 @@ int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __r
   return 1 + count * 4;
 }
 
-#else
-
-int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+int32_t bitPack_int8(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
   assert(count % 32 == 0);
 
   uint8_t* initDest = dest;
@@ -137,7 +134,7 @@ int32_t bitPack(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __
   return dest - initDest;
 }
 
-int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
   assert(bits <= 32);
@@ -160,7 +157,21 @@ int32_t bitUnpack(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __r
   return count;
 }
 
-#endif
+
+extern "C"
+  int32_t unpack_internal_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+
+int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values)
+{
+  assert(count % 32 == 0);
+  const uint32_t bits = src[0];
+  assert(bits <= 32);
+  if (bits > 8) return bitUnpack_int32(src, count, values);
+
+
+  return 1 + unpack_internal_bmi2(src + 1, count, values, bits);
+}
+
 
 int encodeDelta(int32_t* __restrict__ data, uint32_t count, uint8_t* __restrict__ dest) {
   uint8_t* initDest = dest;
