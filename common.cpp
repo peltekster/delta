@@ -3,6 +3,16 @@
 #include <cstdio>
 #include <immintrin.h>
 
+#ifdef __LINUX__
+#define unpack_internal_bmi2_0_8 _unpack_internal_bmi2_0_8
+#define unpack_internal_bmi2_9_16 _unpack_internal_bmi2_9_16
+#endif
+
+extern "C"
+  int32_t unpack_internal_bmi2_0_8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+extern "C"
+  int32_t unpack_internal_bmi2_9_16(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+
 int32_t writeVarInt(uint32_t value, uint8_t* dest) {
   uint8_t* initial = dest;
   while ((value & 0xFFFFFF80) != 0) {
@@ -158,11 +168,6 @@ int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t
 }
 
 int sizeCounters[33];
-
-extern "C"
-  int32_t unpack_internal_bmi2_0_8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
-extern "C"
-  int32_t unpack_internal_bmi2_9_16(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
 
 int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values)
 {

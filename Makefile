@@ -1,15 +1,34 @@
+OS := $(shell uname -s)
 
-ifdef RELEASE
-	CXXFLAGS += -O2
-else
-	CXXFLAGS += -g3 -O0
+ifeq ($(OS), Linux)
+	ifdef USE_LLVM
+		CXX := clang
+	endif
+	
+	CXXFLAGS += -D__LINUX__
+	NASM_FLAGS += -f elf64
 endif
 
-# CXX = /usr/local/bin/g++-4.9
-CXX = g++
-LD = $(CXX)
-CXXFLAGS += -std=c++11 -DBITPACK=64 -DNDEBUG
-NASM = /usr/local/bin/nasm
+ifeq ($(OS), Darwin)
+	ifdef USE_LLVM
+		CXX := g++
+	else
+		CXX := g++-4.9
+	endif
+	
+	CXXFLAGS += -D__MACOS__
+	NASM_FLAGS += -f macho64
+endif
+
+CC := $(CXX)
+
+ifdef RELEASE
+	CXXFLAGS += -O2 -DNDEBUG
+else
+	CXXFLAGS += -g3 -O0 -D__DEBUG__
+endif
+
+CXXFLAGS += -std=c++11 -DBITPACK=64
 LDLIBS += -lm
 
 all: delta
@@ -17,8 +36,7 @@ all: delta
 delta: common.o delta.o bmi2.o
 
 bmi2.o: bmi2.s
-	$(NASM) -o bmi2.o -f macho64 bmi2.s
+	nasm -o bmi2.o $(NASM_FLAGS) bmi2.s
 
 clean:
 	-rm -f delta *.o
-
