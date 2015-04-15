@@ -27,6 +27,25 @@ int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t
 int32_t bitUnpack_int32(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values);
 int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values);
 
+int32_t bitUnpack_bmi2_inline(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values);
+int32_t bitUnpack_bmi2_unroll(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values);
+int32_t bitUnpack_4bits(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values);
+int32_t bitUnpack_4bits_sse(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values);
+
+#if (BITPACK == 66)
+# define bitPack    bitPack_int32
+# define bitUnpack  bitUnpack_4bits_sse
+#endif
+
+#if (BITPACK == 65)
+# define bitPack    bitPack_int32
+# define bitUnpack  bitUnpack_bmi2_unroll
+#endif
+
 #if (BITPACK == 64)
 # define bitPack    bitPack_int32
 # define bitUnpack  bitUnpack_bmi2

@@ -3,7 +3,7 @@
 ; This is a temporary solution. As soon as the Apple's assembler starts supporting Haswell's instruction set, we'll
 ; revert to intrinsics or inline assembly.
 
-section .data data align=16
+section .data align=16
 
 pdepConstants:
 	dq  0x0000000000000000

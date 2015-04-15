@@ -20,15 +20,21 @@ ifeq ($(OS), Darwin)
 	NASM_FLAGS += -f macho64
 endif
 
-CC := $(CXX)
-
 ifdef RELEASE
-	CXXFLAGS += -O2 -DNDEBUG
+	CXXFLAGS += -O3 -DNDEBUG
 else
 	CXXFLAGS += -g3 -O0 -D__DEBUG__
 endif
 
-CXXFLAGS += -std=c++11 -DBITPACK=64
+ifndef BITPACK
+	BITPACK := 32
+endif
+
+CC := $(CXX)
+CXXFLAGS += -std=c++11 -DBITPACK=$(BITPACK)
+CXXFLAGS += -funroll-loops 
+# CXXFLAGS += -mno-sse2 -mno-avx
+# CXXFLAGS += -march=haswell -mbmi2
 LDLIBS += -lm
 
 all: delta

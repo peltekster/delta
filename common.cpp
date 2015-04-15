@@ -8,10 +8,10 @@
 #define unpack_internal_bmi2_9_16 _unpack_internal_bmi2_9_16
 #endif
 
-extern "C"
-  int32_t unpack_internal_bmi2_0_8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
-extern "C"
-  int32_t unpack_internal_bmi2_9_16(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values, int bits);
+extern "C" int32_t unpack_internal_bmi2_0_8(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values, int bits);
+extern "C" int32_t unpack_internal_bmi2_9_16(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values, int bits);
 
 int32_t writeVarInt(uint32_t value, uint8_t* dest) {
   uint8_t* initial = dest;
@@ -53,7 +53,8 @@ inline uint32_t popcnt(uint32_t value) {
   return cnt;
 }
 
-int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count,
+    uint8_t* __restrict__ dest) {
   assert(count % 32 == 0);
 
   uint8_t* initDest = dest;
@@ -66,7 +67,7 @@ int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count, uint8
   assert(bits <= 32);
   const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
   *(dest++) = (uint8_t) bits;
-  uint32_t* destInt = (uint32_t*)dest;
+  uint32_t* destInt = (uint32_t*) dest;
 
   uint64_t buffer = 0;
   uint32_t bufSize = 0;
@@ -75,12 +76,12 @@ int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count, uint8
     bufSize += bits;
 
     while (bufSize >= 32) {
-      *(destInt++) = (uint32_t)(buffer & 0xFFFFFFFF);
+      *(destInt++) = (uint32_t) (buffer & 0xFFFFFFFF);
       buffer >>= 32;
       bufSize -= 32;
     }
   }
-  dest = (uint8_t*)destInt;
+  dest = (uint8_t*) destInt;
   while (bufSize >= 8) {
     *(dest++) = buffer & 0xFF;
     buffer >>= 8;
@@ -90,12 +91,13 @@ int32_t bitPack_int32(const uint32_t* __restrict__ values, uint32_t count, uint8
   return dest - initDest;
 }
 
-int32_t bitUnpack_int32(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+int32_t bitUnpack_int32(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
   assert(bits <= 32);
   const uint64_t mask = ((uint64_t) 1U << bits) - 1U;
-  const uint32_t* srcInt = (uint32_t*)&src[1];
+  const uint32_t* srcInt = (uint32_t*) &src[1];
 
   uint64_t buffer = 0;
   uint32_t bufSize = 0;
@@ -114,7 +116,8 @@ int32_t bitUnpack_int32(const uint8_t* __restrict__ src, uint32_t count, uint32_
   return 1 + count * 4;
 }
 
-int32_t bitPack_int8(const uint32_t* __restrict__ values, uint32_t count, uint8_t* __restrict__ dest) {
+int32_t bitPack_int8(const uint32_t* __restrict__ values, uint32_t count,
+    uint8_t* __restrict__ dest) {
   assert(count % 32 == 0);
 
   uint8_t* initDest = dest;
@@ -144,7 +147,8 @@ int32_t bitPack_int8(const uint32_t* __restrict__ values, uint32_t count, uint8_
   return dest - initDest;
 }
 
-int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values) {
+int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
   assert(bits <= 32);
@@ -169,30 +173,185 @@ int32_t bitUnpack_int8(const uint8_t* __restrict__ src, uint32_t count, uint32_t
 
 int sizeCounters[33];
 
-int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count, uint32_t* __restrict__ values)
-{
+int32_t bitUnpack_bmi2(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
   assert(count % 32 == 0);
   const uint32_t bits = src[0];
   //sizeCounters[bits]++;
   assert(bits <= 32);
-  if (bits > 8 /*16*/) return bitUnpack_int32(src, count, values);
+  if (bits > 8 /*16*/)
+    return bitUnpack_int32(src, count, values);
 
   const uint8_t* __restrict__ saved = src;
   src++;
   /* if (bits <= 8) { */
-    for (; count > 0; count -= 32) {
-      src += unpack_internal_bmi2_0_8(src, 32, values, bits);
-      values += 32;
-    }
+  for (; count > 0; count -= 32) {
+    src += unpack_internal_bmi2_0_8(src, 32, values, bits);
+    values += 32;
+  }
   /*} else {
-    for (; count > 0; count -= 32) {
-      src += unpack_internal_bmi2_9_16(src, 32, values, bits);
-      values += 32;
-    }
-  }*/
+   for (; count > 0; count -= 32) {
+   src += unpack_internal_bmi2_9_16(src, 32, values, bits);
+   values += 32;
+   }
+   }*/
   return src - saved;
 }
 
+#ifdef __LINUX__
+
+const uint64_t masks[] = {0x0000000000000000, 0x0101010101010101, 0x0303030303030303,
+  0x0707070707070707, 0x0f0f0f0f0f0f0f0f, 0x1f1f1f1f1f1f1f1f, 0x3f3f3f3f3f3f3f3f,
+  0x7f7f7f7f7f7f7f7f, 0xffffffffffffffff};
+
+int32_t bitUnpack_bmi2_inline(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
+  const uint32_t bits = src[0];
+  const uint64_t mask = masks[bits];
+  assert(bits <= 32);
+
+  if (bits > 8)
+  return bitUnpack_int32(src, count, values);
+
+  const uint8_t* __restrict__ saved = src;
+  ++src;
+
+  for (; count > 0; count -= 8) {
+    uint64_t tmp = *(uint64_t*) src;
+
+    __asm__ (
+        "pdep %2, %1, %0 \n\t"
+        : "=r"(tmp)
+        : "r"(tmp), "r"(mask)
+        : );
+
+    for (int i = 0; i < 8; ++i) {
+      *(values++) = tmp & 0xFF;
+      tmp >>= 8;
+    }
+
+    src += bits;
+  }
+
+  return src - saved; // 1 + bits * count / 8;
+}
+
+int32_t bitUnpack_bmi2_unroll(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
+  const uint32_t bits = src[0];
+  const uint64_t mask = masks[bits];
+  assert(bits <= 32);
+
+  if (bits > 8)
+  return bitUnpack_int32(src, count, values);
+
+  const uint8_t* __restrict__ saved = src;
+  ++src;
+
+  for (; count > 0; count -= 32) {
+    uint64_t tmp0 = *(uint64_t*) (src + 0 * bits);
+    uint64_t tmp1 = *(uint64_t*) (src + 1 * bits);
+    uint64_t tmp2 = *(uint64_t*) (src + 2 * bits);
+    uint64_t tmp3 = *(uint64_t*) (src + 3 * bits);
+
+    __asm__ ( "pdep %2, %1, %0" : "=r"(tmp0) : "r"(tmp0), "r"(mask) : );
+    __asm__ ( "pdep %2, %1, %0" : "=r"(tmp1) : "r"(tmp1), "r"(mask) : );
+    __asm__ ( "pdep %2, %1, %0" : "=r"(tmp2) : "r"(tmp2), "r"(mask) : );
+    __asm__ ( "pdep %2, %1, %0" : "=r"(tmp3) : "r"(tmp3), "r"(mask) : );
+
+    for (int i = 0; i < 8; ++i) {
+      values[0 + i] = tmp0 & 0xFF;
+      values[8 + i] = tmp1 & 0xFF;
+      values[16 + i] = tmp2 & 0xFF;
+      values[24 + i] = tmp3 & 0xFF;
+
+      tmp0 >>= 8;
+      tmp1 >>= 8;
+      tmp2 >>= 8;
+      tmp3 >>= 8;
+    }
+
+    values += 32;
+    src += 4 * bits;
+  }
+
+  return src - saved; // 1 + bits * count / 8;
+}
+
+#endif
+
+#include <emmintrin.h>
+int32_t bitUnpack_4bits(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
+  const uint32_t bits = src[0];
+  assert(bits <= 32);
+
+  if (bits != 4) {
+    //printf("bits = %u\n", bits);
+    //assert(bits == 4);
+    return bitUnpack_int32(src, count, values);
+  }
+
+  const uint8_t* __restrict__ saved = src;
+  ++src;
+
+  const uint32_t* __restrict__ ints = (uint32_t*) src;
+
+  for (; count > 0; count -= 8) {
+    *(values++) = ((*ints)) & 15;
+    *(values++) = ((*ints) >> 4) & 15;
+    *(values++) = ((*ints) >> 8) & 15;
+    *(values++) = ((*ints) >> 12) & 15;
+    *(values++) = ((*ints) >> 16) & 15;
+    *(values++) = ((*ints) >> 20) & 15;
+    *(values++) = ((*ints) >> 24) & 15;
+    *(values++) = ((*ints) >> 28);
+
+    ++ints;
+    src += bits;
+  }
+
+  return src - saved; // 1 + bits * count / 8;
+}
+
+const __m128i all15 = _mm_set1_epi32(15);
+
+int32_t bitUnpack_4bits_sse(const uint8_t* __restrict__ src, uint32_t count,
+    uint32_t* __restrict__ values) {
+  assert(count % 32 == 0);
+  const uint32_t bits = src[0];
+  assert(bits <= 32);
+
+  if (bits != 4) {
+    return bitUnpack_int32(src, count, values);
+  }
+
+  const uint8_t* saved = src;
+  ++src;
+
+  __m128i* sseIn = (__m128i*) src;
+  __m128i* sseOut = (__m128i*) values;
+
+  for (; count > 0; count -= 32) {
+    __m128i tmp = _mm_loadu_si128(sseIn++);
+
+    _mm_storeu_si128(sseOut++, _mm_and_si128(tmp, all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 4), all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 8), all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 12), all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 16), all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 20), all15));
+    _mm_storeu_si128(sseOut++, _mm_and_si128(_mm_srli_epi32(tmp, 24), all15));
+    _mm_storeu_si128(sseOut++, _mm_srli_epi32(tmp, 28));
+
+    src += 16; // 4*bits
+  }
+
+  return src - saved; // 1 + bits * count / 8;
+}
 
 int encodeDelta(int32_t* __restrict__ data, uint32_t count, uint8_t* __restrict__ dest) {
   uint8_t* initDest = dest;
